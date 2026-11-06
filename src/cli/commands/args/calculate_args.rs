@@ -13,7 +13,7 @@ pub struct CalculateArgs {
 }
 impl CalculateArgs {
     pub fn run(&self) {
-        // "20 + 1" -trim-> "20+1" -?-> [20, +, 1]
+        // "20 + 1" -trim-> "20+1" -?-> [Value(20), Operator("+"), Value(1)]
         let mut tokens: Vec<Token> = Vec::new();
         let mut buffer: String = String::new();
         if let Some(equation) = &self.equation {
@@ -32,17 +32,28 @@ impl CalculateArgs {
             println!("You need to input a operation.")
         }
     }
+    fn is_number(s: &str) -> bool {
+        s.parse::<i32>().is_ok()
+    }
+    fn is_agruppator(s: &str) -> bool {
+        s == "(" || s == ")"
+    }
+    fn is_operator(s: &str) -> bool {
+        !CalculateArgs::is_number(s) && !CalculateArgs::is_agruppator(s)
+    }
     fn process_token(char: char, buffer: &mut String) -> Option<Token> {
-        let is_number: bool = char.is_ascii_digit();
-        let is_agruppator: bool = char == '(' || char == ')';
-        let is_operator: bool = !is_number && !is_agruppator;
-        if is_number {
-            return Some(Value(10));
+        buffer.push(char);
+        if CalculateArgs::is_number(buffer) && !buffer.is_empty() {
+            if let Ok(val) = buffer.parse::<i32>() {
+                buffer.clear();
+                return Some(Value(val));
+            }
+            return None;
         }
-        if is_operator {
+        if CalculateArgs::is_operator(buffer) {
             return Some(Operator(String::from("+")));
         }
-        if is_agruppator {
+        if CalculateArgs::is_agruppator(buffer) {
             return Some(Agruppator('('));
         }
         None
