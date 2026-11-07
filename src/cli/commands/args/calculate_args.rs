@@ -1,4 +1,4 @@
-use std::char;
+use std::{char, mem::take};
 
 use clap::Args;
 
@@ -60,7 +60,8 @@ impl CalculateArgs {
             _ => Some(Types::Operator),
         }
     }
-    // podria sacar la validacion de categoría
+    //TODO: What if: ((10 - 5) + 10) -> ((
+    //TODO What if: (5 + 5 -> )?
     fn process_token(buffer: &mut String) -> Option<Token> {
         let category = CalculateArgs::get_category(buffer);
         if matches!(category, Some(Types::Number)) && !buffer.is_empty() {
@@ -71,10 +72,10 @@ impl CalculateArgs {
             return None;
         }
         if matches!(category, Some(Types::Operator)) {
-            return Some(Operator(String::from("+")));
+            return Some(Operator(take(buffer)));
         }
         if matches!(category, Some(Types::Agruppator)) {
-            return Some(Agruppator('('));
+            return buffer.chars().next().map(Agruppator);
         }
         None
     }
