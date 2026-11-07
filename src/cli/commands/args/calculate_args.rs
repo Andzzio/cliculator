@@ -1,7 +1,15 @@
+use std::char;
+
 use clap::Args;
 
 use crate::cli::commands::args::calculate_args::Token::{Agruppator, Operator, Value};
-#[derive(Debug)]
+#[derive(PartialEq)]
+pub enum Types {
+    Number,
+    Operator,
+    Agruppator,
+}
+#[derive(Debug, PartialEq)]
 pub enum Token {
     Value(i32),
     Operator(String),
@@ -19,10 +27,22 @@ impl CalculateArgs {
         if let Some(equation) = &self.equation {
             let equation = equation.trim().replace(" ", "");
             for char in equation.chars() {
-                let token = CalculateArgs::process_token(char, &mut buffer);
-                if let Some(token) = token {
-                    tokens.push(token);
+                let category = CalculateArgs::get_category(&buffer);
+                let char_category = CalculateArgs::get_category(char.encode_utf8(&mut [0; 4]));
+                if category != char_category {
+                    if let Some(token) = CalculateArgs::process_token(&mut buffer) {
+                        tokens.push(token);
+                    }
+                    buffer.clear();
+                    buffer.push(char);
+                } else {
+                    buffer.push(char);
                 }
+            }
+            if !buffer.is_empty()
+                && let Some(token) = CalculateArgs::process_token(&mut buffer)
+            {
+                tokens.push(token);
             }
             println!("Tokenizer version: {:?}", tokens);
             println!("Operation: {}", equation);
@@ -32,28 +52,28 @@ impl CalculateArgs {
             println!("You need to input a operation.")
         }
     }
-    fn is_number(s: &str) -> bool {
-        s.parse::<i32>().is_ok()
+    fn get_category(s: &str) -> Option<Types> {
+        match s {
+            _ if s.parse::<i32>().is_ok() => Some(Types::Number),
+            "(" | ")" => Some(Types::Agruppator),
+            "" => None,
+            _ => Some(Types::Operator),
+        }
     }
-    fn is_agruppator(s: &str) -> bool {
-        s == "(" || s == ")"
-    }
-    fn is_operator(s: &str) -> bool {
-        !CalculateArgs::is_number(s) && !CalculateArgs::is_agruppator(s)
-    }
-    fn process_token(char: char, buffer: &mut String) -> Option<Token> {
-        buffer.push(char);
-        if CalculateArgs::is_number(buffer) && !buffer.is_empty() {
+    // podria sacar la validacion de categoría
+    fn process_token(buffer: &mut String) -> Option<Token> {
+        let category = CalculateArgs::get_category(buffer);
+        if matches!(category, Some(Types::Number)) && !buffer.is_empty() {
             if let Ok(val) = buffer.parse::<i32>() {
                 buffer.clear();
                 return Some(Value(val));
             }
             return None;
         }
-        if CalculateArgs::is_operator(buffer) {
+        if matches!(category, Some(Types::Operator)) {
             return Some(Operator(String::from("+")));
         }
-        if CalculateArgs::is_agruppator(buffer) {
+        if matches!(category, Some(Types::Agruppator)) {
             return Some(Agruppator('('));
         }
         None
