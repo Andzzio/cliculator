@@ -1,20 +1,13 @@
-use std::{char, mem::take};
+use std::mem::take;
 
 use clap::Args;
 
-use crate::cli::commands::args::calculate_args::Token::{Agruppator, Operator, Value};
-#[derive(PartialEq)]
-pub enum Types {
-    Number,
-    Operator,
-    Agruppator,
-}
-#[derive(Debug, PartialEq)]
-pub enum Token {
-    Value(i32),
-    Operator(String),
-    Agruppator(char),
-}
+use crate::cli::commands::args::{
+    calculate_args::Token::{Operator, Value},
+    operators::{Associativity, OPERATORS},
+    token::Token,
+    types::Types::{self},
+};
 #[derive(Args)]
 pub struct CalculateArgs {
     pub equation: Option<String>,
@@ -44,13 +37,70 @@ impl CalculateArgs {
             {
                 tokens.push(token);
             }
+            let tokens_post_order = CalculateArgs::tokens_to_post_order(&tokens);
             println!("Tokenizer version: {:?}", tokens);
+            println!("Post-Order version: {:?}", tokens_post_order);
             println!("Operation: {}", equation);
-            println!("Result: {}", 20)
+            println!("Result: {}", 20.0)
         }
         if self.equation.is_none() {
             println!("You need to input a operation.")
         }
+    }
+    fn tokens_to_post_order(tokens: &[Token]) -> Vec<Token> {
+        let mut output: Vec<Token> = Vec::new();
+        let mut operators_stack: Vec<Token> = Vec::new();
+        println!("===DEBUG===");
+        println!("initial output: {:?}", output);
+        println!("initial operators_stack: {:?}", operators_stack);
+        println!("============");
+        for token in tokens {
+            println!("current token: {:?}", token);
+            println!("output: {:?}", output);
+            println!("operators_stack: {:?}", operators_stack);
+            println!("========");
+            match token {
+                Token::Value(n) => {
+                    output.push(Value(*n));
+                }
+                Token::Operator(o) => {
+                    while let Some(token) = operators_stack.last() {
+                        if let Operator(token) = token
+                            && let (Some(op_info_top), Some(op_info_current)) =
+                                (OPERATORS.get(token), OPERATORS.get(o))
+                        {
+                            if op_info_current.associativity == Associativity::Left {
+                                if op_info_top.precedence >= op_info_current.precedence
+                                    && let Some(op_top) = operators_stack.pop()
+                                {
+                                    output.push(op_top);
+                                } else {
+                                    break;
+                                }
+                            } else if op_info_current.associativity == Associativity::Right {
+                                if op_info_top.precedence > op_info_current.precedence
+                                    && let Some(op_top) = operators_stack.pop()
+                                {
+                                    output.push(op_top);
+                                } else {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    operators_stack.push(Token::Operator(o.clone()));
+                }
+                Token::Agruppator(a) => {
+                    output.push(Token::Agruppator(*a));
+                }
+            }
+        }
+        while operators_stack.last().is_some() {
+            if let Some(operator) = operators_stack.pop() {
+                output.push(operator);
+            }
+        }
+        output
     }
     fn get_category(s: &str) -> Option<Types> {
         match s {
@@ -65,7 +115,7 @@ impl CalculateArgs {
     fn process_token(buffer: &mut String) -> Option<Token> {
         let category = CalculateArgs::get_category(buffer);
         if matches!(category, Some(Types::Number)) && !buffer.is_empty() {
-            if let Ok(val) = buffer.parse::<i32>() {
+            if let Ok(val) = buffer.parse::<f64>() {
                 buffer.clear();
                 return Some(Value(val));
             }
@@ -75,7 +125,7 @@ impl CalculateArgs {
             return Some(Operator(take(buffer)));
         }
         if matches!(category, Some(Types::Agruppator)) {
-            return buffer.chars().next().map(Agruppator);
+            return buffer.chars().next().map(Token::Agruppator);
         }
         None
     }
