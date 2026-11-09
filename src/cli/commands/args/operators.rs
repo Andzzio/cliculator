@@ -36,5 +36,24 @@ pub static OPERATORS: LazyLock<HashMap<String, OpInfo>> = LazyLock::new(|| {
                 apply: |a, b| a.powf(b),
             },
         ),
+        (
+            String::from("*"),
+            OpInfo {
+                precedence: 3,
+                associativity: Associativity::Left,
+                apply: |a, b| a * b,
+            },
+        ),
+        (
+            String::from("/"),
+            OpInfo {
+                precedence: 3,
+                associativity: Associativity::Left,
+                apply: |a, b| {
+                    //default return inf if b == 0
+                    a / b
+                },
+            },
+        ),
     ])
 });
