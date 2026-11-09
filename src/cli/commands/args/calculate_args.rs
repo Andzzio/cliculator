@@ -38,27 +38,52 @@ impl CalculateArgs {
                 tokens.push(token);
             }
             let tokens_post_order = CalculateArgs::tokens_to_post_order(&tokens);
+            let result = CalculateArgs::get_result(&tokens_post_order);
             println!("Tokenizer version: {:?}", tokens);
             println!("Post-Order version: {:?}", tokens_post_order);
             println!("Operation: {}", equation);
-            println!("Result: {}", 20.0)
+            println!("Result: {}", result)
         }
         if self.equation.is_none() {
             println!("You need to input a operation.")
         }
     }
+    fn get_result(post_order_tokens: &[Token]) -> f64 {
+        let mut result: Vec<f64> = Vec::new();
+        for token in post_order_tokens {
+            match token {
+                Token::Value(v) => {
+                    result.push(*v);
+                }
+                Token::Operator(o) => match (result.pop(), result.pop()) {
+                    (Some(b), Some(a)) => {
+                        if let Some(op_info) = OPERATORS.get(o) {
+                            let operation = (op_info.apply)(a, b);
+                            result.push(operation);
+                        }
+                    }
+                    _ => eprintln!("need more operators"),
+                },
+                Token::Agruppator(_) => {}
+            }
+        }
+        if let Some(result) = result.pop() {
+            return result;
+        }
+        -1.0
+    }
     fn tokens_to_post_order(tokens: &[Token]) -> Vec<Token> {
         let mut output: Vec<Token> = Vec::new();
         let mut operators_stack: Vec<Token> = Vec::new();
-        println!("===DEBUG===");
-        println!("initial output: {:?}", output);
-        println!("initial operators_stack: {:?}", operators_stack);
-        println!("============");
+        //println!("===DEBUG===");
+        //println!("initial output: {:?}", output);
+        //println!("initial operators_stack: {:?}", operators_stack);
+        //println!("============");
         for token in tokens {
-            println!("current token: {:?}", token);
-            println!("output: {:?}", output);
-            println!("operators_stack: {:?}", operators_stack);
-            println!("========");
+            //println!("current token: {:?}", token);
+            //println!("output: {:?}", output);
+            //println!("operators_stack: {:?}", operators_stack);
+            //println!("========");
             match token {
                 Token::Value(n) => {
                     output.push(Value(*n));
